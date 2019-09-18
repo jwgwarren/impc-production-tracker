@@ -20,7 +20,6 @@ import lombok.*;
 import uk.ac.ebi.impc_prod_tracker.data.BaseEntity;
 import uk.ac.ebi.impc_prod_tracker.data.biology.allele.Allele;
 import uk.ac.ebi.impc_prod_tracker.data.biology.gene.flag.GeneFlag;
-import uk.ac.ebi.impc_prod_tracker.data.biology.gene.id_list.IdList;
 import uk.ac.ebi.impc_prod_tracker.data.biology.project_gene.ProjectGene;
 import uk.ac.ebi.impc_prod_tracker.data.biology.species.Species;
 
@@ -28,7 +27,7 @@ import javax.persistence.*;
 import javax.validation.constraints.Pattern;
 import java.util.Set;
 
-@NoArgsConstructor(access= AccessLevel.PRIVATE, force=true)
+@NoArgsConstructor(access= AccessLevel.PUBLIC, force=true)
 @Data
 @Entity
 public class Gene extends BaseEntity
@@ -79,10 +78,7 @@ public class Gene extends BaseEntity
             inverseJoinColumns = @JoinColumn(name = "gene_flag_id"))
     private Set<GeneFlag> geneFlags;
 
-    @ManyToOne
-    private IdList idList;
-
-    private String idListValue;
+    private String accId;
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude

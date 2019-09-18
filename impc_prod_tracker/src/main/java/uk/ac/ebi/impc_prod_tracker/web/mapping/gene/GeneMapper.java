@@ -14,9 +14,9 @@ public class GeneMapper
     public GeneDTO toDto (Gene gene)
     {
         GeneDTO geneDTO = new GeneDTO();
-        geneDTO.setAccessionIdValue(gene.getIdListValue());
+        geneDTO.setAccId(gene.getAccId());
         geneDTO.setSymbol(gene.getSymbol());
-        geneDTO.setSpecieName(gene.getSpecies().getName());
+        geneDTO.setSpeciesName(gene.getSpecies().getName());
         return geneDTO;
     }
 

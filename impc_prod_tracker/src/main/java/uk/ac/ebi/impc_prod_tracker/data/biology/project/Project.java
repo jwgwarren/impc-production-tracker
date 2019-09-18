@@ -12,11 +12,15 @@ import uk.ac.ebi.impc_prod_tracker.data.biology.plan.Plan;
 import uk.ac.ebi.impc_prod_tracker.data.biology.privacy.Privacy;
 import uk.ac.ebi.impc_prod_tracker.data.biology.project_gene.ProjectGene;
 import uk.ac.ebi.impc_prod_tracker.data.biology.project_location.ProjectLocation;
+import uk.ac.ebi.impc_prod_tracker.data.biology.project_sequence.ProjectSequence;
 import uk.ac.ebi.impc_prod_tracker.data.biology.species.Species;
 import uk.ac.ebi.impc_prod_tracker.data.organization.consortium.Consortium;
+import uk.ac.ebi.impc_prod_tracker.data.organization.work_unit.WorkUnit;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @NoArgsConstructor(access= AccessLevel.PUBLIC, force=true)
@@ -24,6 +28,8 @@ import java.util.Set;
 @Entity
 public class Project extends BaseEntity implements Resource<Project>
 {
+    transient private Boolean isObjectRestricted = null;
+
     @Id
     @SequenceGenerator(name = "projectSeq", sequenceName = "PROJECT_SEQ")
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "projectSeq")
@@ -50,7 +56,7 @@ public class Project extends BaseEntity implements Resource<Project>
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @OneToMany
+    @OneToMany(fetch=FetchType.EAGER)
     @JoinColumn(name = "project_id")
     private Set<AssignmentStatusStamp> assignmentStatusStamps;
 
@@ -64,7 +70,6 @@ public class Project extends BaseEntity implements Resource<Project>
 
     private Boolean recovery;
 
-//    @NotNull
     private Boolean isActive;
 
     @Column(columnDefinition = "TEXT")
@@ -73,10 +78,6 @@ public class Project extends BaseEntity implements Resource<Project>
     @Column(columnDefinition = "TEXT")
     private String projectExternalRef;
 
-
-
-
-    //    @NotNull
     @ManyToOne(targetEntity= Privacy.class)
     private Privacy privacy;
 
@@ -104,19 +105,26 @@ public class Project extends BaseEntity implements Resource<Project>
     @JsonIgnore
     public Project getRestrictedObject()
     {
-        /* TODO
-        Plan plan = new Plan();
-
-        plan.setPrivacy(this.privacy);
-        plan.setPin(this.pin);
-        plan.setPlanType(this.planType);
         Project restrictedProject = new Project();
-        restrictedProject.setTpn(this.project.getTpn());
-        plan.setProject(restrictedProject);
+        restrictedProject.setId(id);
+        restrictedProject.setTpn(tpn);
+        restrictedProject.setPrivacy(privacy);
+        restrictedProject.setWithdrawn(withdrawn);
+        restrictedProject.setComment(comment);
+        restrictedProject.setIsActive(isActive);
+        restrictedProject.setRecovery(recovery);
+        restrictedProject.setProjectExternalRef(projectExternalRef);
+        restrictedProject.setGenes(genes);
+        restrictedProject.setIsObjectRestricted(true);
+        return restrictedProject;
+    }
 
-        return plan;
-        */
-        return null;
+    @Override
+    public List<WorkUnit> getRelatedWorkUnits()
+    {
+        List<WorkUnit> relatedWorkUnites = new ArrayList<>();
+        plans.forEach(x -> relatedWorkUnites.add(x.getWorkUnit()));
+        return relatedWorkUnites;
     }
 
 
@@ -127,17 +135,25 @@ public class Project extends BaseEntity implements Resource<Project>
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
+    @OneToMany(mappedBy = "project")
+    private Set<ProjectSequence> sequences;
+
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @OneToMany
     @JoinColumn(name = "project_id")
     private Set<ProjectLocation> locations;
 
 
-    @EqualsAndHashCode.Exclude
+
     @ToString.Exclude
     @JsonIgnore
-    @ManyToMany(mappedBy = "projects")
+    @ManyToMany
+    @JoinTable(
+            name = "project_consortium",
+            joinColumns = @JoinColumn(name = "project_id"),
+            inverseJoinColumns = @JoinColumn(name = "consortium_id"))
     private Set<Consortium> consortia;
-
 
     @ToString.Exclude
     @JsonIgnore
