@@ -9,6 +9,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.SequenceGenerator;
 
@@ -22,7 +23,9 @@ public class Nuclease extends BaseEntity
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "nucleaseSeq")
     private Long id;
 
+    @EqualsAndHashCode.Exclude
     @ManyToOne(targetEntity = CrisprAttempt.class)
+    @JoinColumn(name = "attempt_id")
     private CrisprAttempt crisprAttempt;
 
     private Double concentration;

@@ -4,12 +4,16 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.impc_prod_tracker.conf.error_management.OperationFailedException;
 import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.CrisprAttempt;
+import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.crispr_attempt_reagent.CrisprAttemptReagent;
 import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.delivery_type.DeliveryMethodType;
 import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.genotype_primer.GenotypePrimer;
 import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.guide.Guide;
+import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.mutagenesis_donor.MutagenesisDonor;
+import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.nuclease.Nuclease;
 import uk.ac.ebi.impc_prod_tracker.service.plan.CrisprAttempService;
 import uk.ac.ebi.impc_prod_tracker.web.dto.plan.production.crispr_attempt.CrisprAttemptDTO;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Component
@@ -18,6 +22,7 @@ public class CrisprAttemptMapper
     private ModelMapper modelMapper;
     private GuideMapper guideMapper;
     private NucleaseMapper nucleaseMapper;
+    private MutagenesisDonorMapper mutagenesisDonorMapper;
     private GenotypePrimerMapper genotypePrimerMapper;
     private CrisprAttempService crisprAttempService;
 
@@ -28,12 +33,14 @@ public class CrisprAttemptMapper
         ModelMapper modelMapper,
         GuideMapper guideMapper,
         NucleaseMapper nucleaseMapper,
+        MutagenesisDonorMapper mutagenesisDonorMapper,
         GenotypePrimerMapper genotypePrimerMapper,
         CrisprAttempService crisprAttempService)
     {
         this.modelMapper = modelMapper;
         this.guideMapper = guideMapper;
         this.nucleaseMapper = nucleaseMapper;
+        this.mutagenesisDonorMapper = mutagenesisDonorMapper;
         this.genotypePrimerMapper = genotypePrimerMapper;
         this.crisprAttempService = crisprAttempService;
 
@@ -46,7 +53,10 @@ public class CrisprAttemptMapper
         {
             crisprAttemptDTO = modelMapper.map(crisprAttempt, CrisprAttemptDTO.class);
             crisprAttemptDTO.setGuideDTOS(guideMapper.toDtos(crisprAttempt.getGuides()));
-            crisprAttemptDTO.setGenotypePrimerDTOS(genotypePrimerMapper.toDtos(crisprAttempt.getPrimers()));
+            crisprAttemptDTO.setGenotypePrimerDTOS(
+                genotypePrimerMapper.toDtos(crisprAttempt.getPrimers()));
+            crisprAttemptDTO.setMutagenesisDonorDTOS(
+                mutagenesisDonorMapper.toDtos(crisprAttempt.getMutagenesisDonors()));
         }
         return crisprAttemptDTO;
     }
@@ -57,6 +67,9 @@ public class CrisprAttemptMapper
         setGuidesToEntity(crisprAttempt, crisprAttemptDTO);
         setDeliveryTypeMethodToEntity(crisprAttempt, crisprAttemptDTO);
         setGenotypePrimersToEntity(crisprAttempt, crisprAttemptDTO);
+        setMutagenesisDonorsToEntity(crisprAttempt, crisprAttemptDTO);
+        setReagentsToEntity(crisprAttempt, crisprAttemptDTO);
+        setNucleasesToEntity(crisprAttempt, crisprAttemptDTO);
         return crisprAttempt;
     }
 
@@ -67,9 +80,11 @@ public class CrisprAttemptMapper
         crisprAttempt.setGuides(guides);
     }
 
-    private void setGenotypePrimersToEntity(CrisprAttempt crisprAttempt, CrisprAttemptDTO crisprAttemptDTO)
+    private void setGenotypePrimersToEntity(
+        CrisprAttempt crisprAttempt, CrisprAttemptDTO crisprAttemptDTO)
     {
-        Set<GenotypePrimer> genotypePrimers = genotypePrimerMapper.toEntities(crisprAttemptDTO.getGenotypePrimerDTOS());
+        Set<GenotypePrimer> genotypePrimers =
+            genotypePrimerMapper.toEntities(crisprAttemptDTO.getGenotypePrimerDTOS());
         genotypePrimers.forEach(x -> x.setCrisprAttempt(crisprAttempt));
         crisprAttempt.setPrimers(genotypePrimers);
     }
@@ -90,5 +105,28 @@ public class CrisprAttemptMapper
             }
             crisprAttempt.setDeliveryMethodType(deliveryMethodType);
         }
+    }
+
+    private void setMutagenesisDonorsToEntity(
+        CrisprAttempt crisprAttempt, CrisprAttemptDTO crisprAttemptDTO)
+    {
+        Set<MutagenesisDonor> mutagenesisDonors =
+            mutagenesisDonorMapper.toEntities(crisprAttemptDTO.getMutagenesisDonorDTOS());
+        mutagenesisDonors.forEach(x -> x.setCrisprAttempt(crisprAttempt));
+        crisprAttempt.setMutagenesisDonors(mutagenesisDonors);
+    }
+
+    private void setReagentsToEntity(CrisprAttempt crisprAttempt, CrisprAttemptDTO crisprAttemptDTO)
+    {
+        Set<CrisprAttemptReagent> crisprAttemptReagents = new HashSet<>();
+        crisprAttemptReagents.forEach(x -> x.setCrisprAttempt(crisprAttempt));
+        crisprAttempt.setCrisprAttemptReagents(crisprAttemptReagents);
+    }
+
+    private void setNucleasesToEntity(CrisprAttempt crisprAttempt, CrisprAttemptDTO crisprAttemptDTO)
+    {
+        Set<Nuclease> nucleases = new HashSet<>();
+        nucleases.forEach(x -> x.setCrisprAttempt(crisprAttempt));
+        crisprAttempt.setNucleases(nucleases);
     }
 }

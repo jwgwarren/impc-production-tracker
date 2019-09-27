@@ -1,19 +1,17 @@
 package uk.ac.ebi.impc_prod_tracker.service.conf;
 
 import org.springframework.stereotype.Component;
-import uk.ac.ebi.impc_prod_tracker.conf.security.SystemSubject;
-import uk.ac.ebi.impc_prod_tracker.conf.security.abac.spring.SubjectRetriever;
 import uk.ac.ebi.impc_prod_tracker.data.biology.allele_type.AlleleTypeRepository;
+import uk.ac.ebi.impc_prod_tracker.data.biology.assignment_status.AssignmentStatusRepository;
+import uk.ac.ebi.impc_prod_tracker.data.biology.crispr_attempt.mutagenesis_donor.preparation_type.PreparationTypeRepository;
 import uk.ac.ebi.impc_prod_tracker.data.biology.phenotyping_attempt.material_deposited_type.MaterialDepositedTypeRepository;
 import uk.ac.ebi.impc_prod_tracker.data.biology.plan.type.PlanTypeRepository;
 import uk.ac.ebi.impc_prod_tracker.data.biology.privacy.PrivacyRepository;
 import uk.ac.ebi.impc_prod_tracker.data.biology.status.StatusRepository;
 import uk.ac.ebi.impc_prod_tracker.data.biology.strain.StrainRepository;
 import uk.ac.ebi.impc_prod_tracker.data.organization.institute.InstituteRepository;
-import uk.ac.ebi.impc_prod_tracker.data.organization.role.RoleRepository;
 import uk.ac.ebi.impc_prod_tracker.data.organization.work_group.WorkGroupRepository;
 import uk.ac.ebi.impc_prod_tracker.data.organization.work_unit.WorkUnitRepository;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,45 +20,44 @@ import java.util.Map;
 @Component
 public class ConfigurationServiceImpl implements ConfigurationService
 {
-    private SubjectRetriever subjectRetriever;
     private WorkUnitRepository workUnitRepository;
     private WorkGroupRepository workGroupRepository;
     private PlanTypeRepository planTypeRepository;
     private PrivacyRepository privacyRepository;
     private StatusRepository statusRepository;
+    private AssignmentStatusRepository assignmentStatusRepository;
     private AlleleTypeRepository alleleTypeRepository;
     private InstituteRepository instituteRepository;
-    private RoleRepository roleRepository;
     private StrainRepository strainRepository;
-
+    private PreparationTypeRepository preparationTypeRepository;
     private MaterialDepositedTypeRepository materialDepositedTypeRepository;
 
     private Map<String, List<String>> conf = new HashMap<>();
 
     public ConfigurationServiceImpl(
-            SubjectRetriever subjectRetriever,
-            WorkUnitRepository workUnitRepository,
-            WorkGroupRepository workGroupRepository,
-            PlanTypeRepository planTypeRepository,
-            PrivacyRepository privacyRepository,
-            StatusRepository statusRepository,
-            AlleleTypeRepository alleleTypeRepository,
-            InstituteRepository instituteRepository,
-            RoleRepository roleRepository,
-            StrainRepository strainRepository,
-            MaterialDepositedTypeRepository materialDepositedTypeRepository
+        WorkUnitRepository workUnitRepository,
+        WorkGroupRepository workGroupRepository,
+        PlanTypeRepository planTypeRepository,
+        PrivacyRepository privacyRepository,
+        StatusRepository statusRepository,
+        AssignmentStatusRepository assignmentStatusRepository,
+        AlleleTypeRepository alleleTypeRepository,
+        InstituteRepository instituteRepository,
+        StrainRepository strainRepository,
+        PreparationTypeRepository preparationTypeRepository,
+        MaterialDepositedTypeRepository materialDepositedTypeRepository
     )
     {
-        this.subjectRetriever = subjectRetriever;
         this.workUnitRepository = workUnitRepository;
         this.workGroupRepository = workGroupRepository;
         this.planTypeRepository = planTypeRepository;
         this.privacyRepository = privacyRepository;
         this.statusRepository = statusRepository;
+        this.assignmentStatusRepository = assignmentStatusRepository;
         this.alleleTypeRepository = alleleTypeRepository;
         this.instituteRepository = instituteRepository;
-        this.roleRepository = roleRepository;
         this.strainRepository = strainRepository;
+        this.preparationTypeRepository = preparationTypeRepository;
         this.materialDepositedTypeRepository = materialDepositedTypeRepository;
     }
 
@@ -69,20 +66,17 @@ public class ConfigurationServiceImpl implements ConfigurationService
     {
         if (conf.isEmpty())
         {
-            SystemSubject systemSubject = subjectRetriever.getSubject();
-            if (systemSubject != null)
-            {
-                addWorkUnits();
-                addWorkGroups();
-                addPlanTypes();
-                addPrivacies();
-                addStatuses();
-                addAlleleTypes();
-                addInstitutes();
-                addRoles();
-                addStrains();
-                addMaterialTypes();
-            }
+            addWorkUnits();
+            addWorkGroups();
+            addPlanTypes();
+            addPrivacies();
+            addStatuses();
+            addAssignmentStatuses();
+            addAlleleTypes();
+            addInstitutes();
+            addStrains();
+            addMaterialTypes();
+            addPreparationTypes();
         }
 
         return conf;
@@ -123,6 +117,14 @@ public class ConfigurationServiceImpl implements ConfigurationService
         conf.put("statuses", statuses);
     }
 
+    private void addAssignmentStatuses()
+    {
+        List<String> assignmentStatuses = new ArrayList<>();
+        assignmentStatusRepository.findAll().forEach(p -> assignmentStatuses.add(p.getName()));
+        conf.put("assignmentStatuses", assignmentStatuses);
+
+    }
+
     private void addAlleleTypes()
     {
         List<String> alleleTypes = new ArrayList<>();
@@ -137,13 +139,6 @@ public class ConfigurationServiceImpl implements ConfigurationService
         conf.put("institutes", institutes);
     }
 
-    private void addRoles()
-    {
-        List<String> roles = new ArrayList<>();
-        roleRepository.findAll().forEach(p -> roles.add(p.getName()));
-        conf.put("roles", roles);
-    }
-
     private void addStrains()
     {
         List<String> trackedStrains = new ArrayList<>();
@@ -156,5 +151,12 @@ public class ConfigurationServiceImpl implements ConfigurationService
         List<String> materialTypes = new ArrayList<>();
         materialDepositedTypeRepository.findAll().forEach(p -> materialTypes.add(p.getName()));
         conf.put("materialTypes", materialTypes);
+    }
+
+    private void addPreparationTypes()
+    {
+        List<String> preparationTypes = new ArrayList<>();
+        preparationTypeRepository.findAll().forEach(p -> preparationTypes.add(p.getName()));
+        conf.put("preparationTypes", preparationTypes);
     }
 }

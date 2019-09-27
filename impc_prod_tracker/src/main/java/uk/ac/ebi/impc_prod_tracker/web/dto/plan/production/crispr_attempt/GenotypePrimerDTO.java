@@ -27,7 +27,7 @@ public class GenotypePrimerDTO
 {
     private Long id;
     @JsonIgnore
-    private Long crispr_attempt_plan_id;
+    private Long attempt_id;
     private Integer genomicStartCoordinate;
     private Integer genomicEndCoordinate;
     private String name;
