@@ -21,9 +21,8 @@ import lombok.*;
 import uk.ac.ebi.impc_prod_tracker.data.BaseEntity;
 import uk.ac.ebi.impc_prod_tracker.data.biology.allele.Allele;
 import uk.ac.ebi.impc_prod_tracker.data.biology.gene.flag.GeneFlag;
-import uk.ac.ebi.impc_prod_tracker.data.biology.project_gene.ProjectGene;
+import uk.ac.ebi.impc_prod_tracker.data.biology.project_intention_gene.ProjectIntentionGene;
 import uk.ac.ebi.impc_prod_tracker.data.biology.species.Species;
-
 import javax.persistence.*;
 import javax.validation.constraints.Pattern;
 import java.util.Set;
@@ -39,6 +38,8 @@ public class Gene extends BaseEntity
     private Long id;
 
     private String symbol;
+
+    private String name;
 
     private String type;
 
@@ -66,6 +67,7 @@ public class Gene extends BaseEntity
     @Pattern(regexp = "^([\\+-\\?]{1}|)$", message = "The values allowed for the strand are: '+', '-', or if the value es unknown enter '?'.")
     private String ensemblStrand;
 
+    @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "genes")
     private Set<Allele> alleles;
 
@@ -88,5 +90,5 @@ public class Gene extends BaseEntity
     @ToString.Exclude
     @OneToMany
     @JoinColumn(name = "gene_id")
-    private Set<ProjectGene> projectGenes;
+    private Set<ProjectIntentionGene> projectIntentionGenes;
 }

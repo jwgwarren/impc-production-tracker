@@ -16,15 +16,21 @@
 package uk.ac.ebi.impc_prod_tracker.conf.error_management;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
 import com.fasterxml.jackson.databind.jsontype.impl.TypeIdResolverBase;
 import lombok.Data;
 import org.hibernate.validator.internal.engine.path.PathImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import uk.ac.ebi.impc_prod_tracker.conf.exceptions.OperationFailedException;
+import uk.ac.ebi.impc_prod_tracker.conf.exceptions.SystemOperationFailedException;
+import uk.ac.ebi.impc_prod_tracker.conf.exceptions.UserOperationFailedException;
 import javax.validation.ConstraintViolation;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -49,23 +55,108 @@ public class ApiError
     private String debugMessage;
     private List<ApiSubError> subErrors;
 
+    @JsonIgnore
+    private Throwable exception;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApiError.class);
+    private static final String ERROR_MESSAGE_TO_LOG =
+        "Exception occurred. Message:[%s]. DebugMessage:[%s]. SubErrors:[subErrors]";
+    private static final String ERROR_MESSAGE =
+        "An unexpected error has occurred in the system: %s. Please contact the administrator " +
+            "to check the errors in the logs.";
+
     private ApiError()
     {
         timestamp = LocalDateTime.now();
     }
 
-    public ApiError(HttpStatus status)
+    public static ApiError of(OperationFailedException exception)
     {
-        this();
-        this.status = status;
+        ApiError apiError = new ApiError();
+        if (exception instanceof UserOperationFailedException)
+        {
+            UserOperationFailedException uofe = (UserOperationFailedException) exception;
+            apiError = buildFromUserOperationFailedException(uofe);
+        }
+        else if (exception instanceof SystemOperationFailedException)
+        {
+            SystemOperationFailedException sofe = (SystemOperationFailedException) exception;
+            apiError = buildFromSystemOperationFailedException(sofe);
+        }
+        if (exception.getHttpStatus() != null)
+        {
+            apiError.setStatus(exception.getHttpStatus());
+        }
+        return apiError;
+    }
+
+    private static ApiError buildFromUserOperationFailedException(UserOperationFailedException exception)
+    {
+        ApiError apiError = new ApiError();
+        apiError.exception = exception;
+        apiError.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        apiError.message = getExceptionMessage(exception);
+        apiError.debugMessage = exception.getDebugMessage();
+        logError(apiError.exception, apiError.debugMessage);
+        return apiError;
+    }
+
+    private static ApiError buildFromSystemOperationFailedException(SystemOperationFailedException exception)
+    {
+        ApiError apiError = new ApiError();
+        apiError.exception = exception;
+        apiError.status = HttpStatus.INTERNAL_SERVER_ERROR;
+        apiError.message = exception.getMessage();
+        apiError.debugMessage = exception.getDebugMessage();
+        logErrorWithExceptionDetail(apiError.message, buildDetailedError(exception));
+        return apiError;
+    }
+
+    private static String buildDetailedError(SystemOperationFailedException exception)
+    {
+        int numberElementsStackToDebug = 4;
+        Throwable cause = exception.getCause();
+        StackTraceElement[] stackTraceElements;
+        String causeError = "";
+        if (cause == null)
+        {
+            stackTraceElements = exception.getStackTrace();
+        }
+        else
+        {
+            stackTraceElements = cause.getStackTrace();
+            causeError = "[" + cause.toString() + "]";
+        }
+
+        List<String> stackMessages = new ArrayList<>();
+        for (int i = 0; i < stackTraceElements.length && i < numberElementsStackToDebug; i++)
+        {
+            stackMessages.add(stackTraceElements[i].toString());
+        }
+
+        return
+            causeError + exception.getExceptionDetail()
+                + ". Truncated Stack: " + stackMessages.toString();
+    }
+
+    private static String getExceptionMessage(Throwable exception)
+    {
+        String message = exception.getMessage();
+        if (message == null)
+        {
+            Throwable cause = exception.getCause();
+            if (cause == null)
+            {
+                cause = exception;
+            }
+            message = String.format(ERROR_MESSAGE, cause.toString());
+        }
+        return message;
     }
 
     public ApiError(HttpStatus status, Throwable ex)
     {
-        this();
-        this.status = status;
-        this.message = "Unexpected error";
-        this.debugMessage = ex.getLocalizedMessage();
+        this(status, "Unexpected error.", ex);
     }
 
     public ApiError(HttpStatus status, String message, Throwable ex)
@@ -74,6 +165,7 @@ public class ApiError
         this.status = status;
         this.message = message;
         this.debugMessage = ex.getLocalizedMessage();
+        logError(ex, ex.getLocalizedMessage());
     }
 
     public ApiError(HttpStatus status, String message, String debugMessage)
@@ -82,6 +174,7 @@ public class ApiError
         this.status = status;
         this.message = message;
         this.debugMessage = debugMessage;
+        logErrorWithExceptionDetail(message, debugMessage);
     }
 
     public ApiError(HttpStatus status, ExceptionFormatter exceptionFormatter)
@@ -90,6 +183,7 @@ public class ApiError
         this.status = status;
         this.message = exceptionFormatter.getMessage();
         this.debugMessage = exceptionFormatter.getDebugMessage();
+        logErrorWithExceptionDetail(this.message, this.debugMessage);
     }
 
     private void addSubError(ApiSubError subError)
@@ -154,6 +248,27 @@ public class ApiError
     void addValidationErrors(Set<ConstraintViolation<?>> constraintViolations)
     {
         constraintViolations.forEach(this::addValidationError);
+    }
+
+    private static void logError(Throwable exception, String debugMessage)
+    {
+        String extendedDebugMessage = debugMessage + "|";
+        Throwable cause = exception.getCause();
+        if (cause != null)
+        {
+            extendedDebugMessage += "["+ cause.toString() + "]";
+            StackTraceElement[] stackTraceElements = cause.getStackTrace();
+            if (stackTraceElements != null && stackTraceElements.length > 0)
+            {
+                extendedDebugMessage += stackTraceElements[0];
+            }
+        }
+        logErrorWithExceptionDetail(exception.getMessage(), extendedDebugMessage);
+    }
+
+    private static void logErrorWithExceptionDetail(String message, String exceptionDetail)
+    {
+        LOGGER.error(String.format(ERROR_MESSAGE_TO_LOG, message, exceptionDetail));
     }
 }
 

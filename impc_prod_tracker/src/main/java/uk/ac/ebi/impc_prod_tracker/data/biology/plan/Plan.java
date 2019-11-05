@@ -56,16 +56,12 @@ public class Plan extends BaseEntity
     private String pin;
 
     @ToString.Exclude
-    @JsonIgnore
-    @ManyToOne
     @NotNull
+    @ManyToOne
     private Project project;
 
     @ManyToOne(targetEntity = Funder.class)
     private Funder funder;
-
-    @ManyToOne(targetEntity = Consortium.class)
-    private Consortium consortium;
 
     @ManyToOne(targetEntity = WorkUnit.class)
     private WorkUnit workUnit;
@@ -84,9 +80,6 @@ public class Plan extends BaseEntity
     private String comment;
 
     private Boolean productsAvailableForGeneralPublic;
-
-    @ManyToOne
-    private AttemptType type;
 
     @ManyToMany()
     @JoinTable(
@@ -111,7 +104,6 @@ public class Plan extends BaseEntity
         this.project = plan.project;
         this.planType = plan.planType;
         this.workUnit = plan.workUnit;
-        this.consortium = plan.consortium;
         this.funder = plan.funder;
         this.comment = plan.comment;
         this.planFlags = new HashSet<>(plan.planFlags);

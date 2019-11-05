@@ -8,8 +8,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class GeneDTO
 {
-    @JsonProperty("accessionIdValue")
+    private Long id;
+    @JsonProperty("accessionId")
     private String accId;
+    private String name;
     private String symbol;
     private String speciesName;
+    private String externalLink;
 }

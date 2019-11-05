@@ -38,7 +38,7 @@ import javax.persistence.ManyToMany;
 import javax.persistence.SequenceGenerator;
 import java.util.Set;
 
-@NoArgsConstructor(access= AccessLevel.PRIVATE, force=true)
+@NoArgsConstructor(access= AccessLevel.PUBLIC, force=true)
 @Data
 @Entity
 @RestResource(rel = "consortia", path = "consortia")
@@ -61,13 +61,5 @@ public class Consortium extends BaseEntity
         joinColumns = @JoinColumn(name = "consortium_id"),
         inverseJoinColumns = @JoinColumn(name = "work_unit_id"))
     private Set<WorkUnit> workUnits;
-
-
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @JsonIgnore
-    @ManyToMany(mappedBy = "consortia")
-    private Set<Project> projects;
-
 
 }

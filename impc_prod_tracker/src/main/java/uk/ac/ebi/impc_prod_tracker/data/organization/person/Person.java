@@ -1,18 +1,18 @@
-/*******************************************************************************
- * Copyright 2019 EMBL - European Bioinformatics Institute
- *
- * Licensed under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the
- * License.
- *******************************************************************************/
+/******************************************************************************
+ Copyright 2019 EMBL - European Bioinformatics Institute
+
+ Licensed under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License. You may obtain a copy of the License at
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ either express or implied. See the License for the specific
+ language governing permissions and limitations under the
+ License.
+ */
 package uk.ac.ebi.impc_prod_tracker.data.organization.person;
 
 import lombok.*;
@@ -25,7 +25,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import java.util.Set;
 
-@NoArgsConstructor(access= AccessLevel.PRIVATE, force=true)
+@NoArgsConstructor(access= AccessLevel.PUBLIC, force=true)
 @Data
 @Entity
 @RestResource(rel = "people", path = "people")
@@ -36,11 +36,16 @@ public class Person extends BaseEntity
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "personSeq")
     private Long id;
 
+    private String name;
+
     private String authId;
 
     private Boolean isActive;
 
     private Boolean contactable;
+
+    // The password is not saved in the database.
+    transient private String password;
 
     @NotNull
     @Column(unique = true)
@@ -56,13 +61,13 @@ public class Person extends BaseEntity
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @OneToMany(mappedBy = "person", fetch = FetchType.EAGER)
-    private Set<PersonRoleWorkUnit> roleWorkUnits;
+    @OneToMany(cascade=CascadeType.ALL, mappedBy = "person", orphanRemoval=true, fetch = FetchType.EAGER)
+    private Set<PersonRoleWorkUnit> rolesWorkUnits;
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @OneToMany(mappedBy = "person", fetch = FetchType.EAGER)
-    private Set<PersonRoleConsortium> roleConsortia;
+    @OneToMany(cascade=CascadeType.ALL, mappedBy = "person", orphanRemoval=true, fetch = FetchType.EAGER)
+    private Set<PersonRoleConsortium> rolesConsortia;
 
     @Override
     public String toString()

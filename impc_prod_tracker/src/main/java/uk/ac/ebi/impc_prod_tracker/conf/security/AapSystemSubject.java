@@ -1,35 +1,36 @@
-/*******************************************************************************
- * Copyright 2019 EMBL - European Bioinformatics Institute
- *
- * Licensed under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the
- * License.
- *******************************************************************************/
+/******************************************************************************
+ Copyright 2019 EMBL - European Bioinformatics Institute
+
+ Licensed under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License. You may obtain a copy of the License at
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ either express or implied. See the License for the specific
+ language governing permissions and limitations under the
+ License.
+ */
 package uk.ac.ebi.impc_prod_tracker.conf.security;
 
 import io.jsonwebtoken.Claims;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import uk.ac.ebi.impc_prod_tracker.conf.error_management.OperationFailedException;
+import uk.ac.ebi.impc_prod_tracker.common.fluent.FluentPersonRoleConsortiumList;
+import uk.ac.ebi.impc_prod_tracker.common.fluent.FluentPersonRoleWorkUnitList;
+import uk.ac.ebi.impc_prod_tracker.conf.exceptions.UserOperationFailedException;
 import uk.ac.ebi.impc_prod_tracker.data.organization.consortium.Consortium;
 import uk.ac.ebi.impc_prod_tracker.data.organization.person.Person;
 import uk.ac.ebi.impc_prod_tracker.data.organization.person.PersonRepository;
 import uk.ac.ebi.impc_prod_tracker.data.organization.person_role_consortium.PersonRoleConsortium;
 import uk.ac.ebi.impc_prod_tracker.data.organization.person_role_work_unit.PersonRoleWorkUnit;
-import uk.ac.ebi.impc_prod_tracker.data.organization.role.Role;
 import uk.ac.ebi.impc_prod_tracker.data.organization.work_unit.WorkUnit;
-import uk.ac.ebi.impc_prod_tracker.service.WorkUnitService;
-
+import uk.ac.ebi.impc_prod_tracker.service.organization.WorkUnitService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import java.util.Set;
 /**
  * Implementation of SystemSubject where most of the user information is taken from a token (jwt). Additional
  * information needs to be loaded from the database.
+ *
  * @author Mauricio Martinez
  */
 @Component
@@ -54,7 +56,6 @@ public class AapSystemSubject implements SystemSubject
     private PersonRepository personRepository;
     private Person person;
     private boolean isEbiAdmin;
-    private List<String> domains = new ArrayList<>();
     private List<PersonRoleWorkUnit> roleWorkUnits;
     private List<PersonRoleConsortium> roleConsortia;
     WorkUnitService workUnitService;
@@ -66,7 +67,9 @@ public class AapSystemSubject implements SystemSubject
     private final static String NOT_USER_INFORMATION_DEBUG_MESSAGE =
         "The user [%s] with reference id [%s] was successfully logged in but there is no related information for them " +
             "in the system. Please contact an administrator.";
-    private static final String TRACKER_MAINTAINER_DOMAIN_NAME = "self.tracker-maintainer";
+
+    @Value("${gentar-maintainer-domain-name}")
+    private String MAINTAINER_DOMAIN_NAME;
 
     @Autowired
     public AapSystemSubject(PersonRepository personRepository, WorkUnitService workUnitService)
@@ -78,6 +81,7 @@ public class AapSystemSubject implements SystemSubject
     /**
      * Builds a AapSystemSubject object using the information in the claims of an already validated token (jwt).
      * Then complements the information with additional data taken from the database.
+     *
      * @param claims Claims in the token with information about the user.
      * @return SystemSubject with the information.
      */
@@ -87,20 +91,15 @@ public class AapSystemSubject implements SystemSubject
         name = claims.get("name", String.class);
         userRefId = claims.getSubject();
         email = claims.get("email", String.class);
-        domains = claims.get("domains", List.class);
 
         loadPersonInformation(userRefId);
 
         return this;
     }
 
-    private boolean isMaintainerUser()
-    {
-        return domains.contains(TRACKER_MAINTAINER_DOMAIN_NAME);
-    }
-
     /**
      * Simple constructor that sets the minimal information for a user.
+     *
      * @param login
      */
     public AapSystemSubject(String login)
@@ -112,29 +111,20 @@ public class AapSystemSubject implements SystemSubject
     {
         if (authId == null)
         {
-            throw new OperationFailedException(NULL_AUTH_ID_MESSAGE);
+            throw new UserOperationFailedException(NULL_AUTH_ID_MESSAGE);
         }
         this.person = personRepository.findPersonByAuthIdEquals(authId);
         if (person == null)
         {
-            if (isMaintainerUser())
-            {
-                isEbiAdmin = true;
-                roleWorkUnits = null;
-                roleConsortia = null;
-            }
-            else
-            {
-                throw new OperationFailedException(
-                    String.format(NOT_USER_INFORMATION_MESSAGE, login),
-                    String.format(NOT_USER_INFORMATION_DEBUG_MESSAGE, login, authId));
-            }
+            throw new UserOperationFailedException(
+                String.format(NOT_USER_INFORMATION_MESSAGE, login),
+                String.format(NOT_USER_INFORMATION_DEBUG_MESSAGE, login, authId));
         }
         else
         {
             isEbiAdmin = person.getEbiAdmin() == null ? false : person.getEbiAdmin();
-            roleWorkUnits = new ArrayList<>(person.getRoleWorkUnits());
-            roleConsortia = new ArrayList<>(person.getRoleConsortia());
+            roleWorkUnits = new ArrayList<>(person.getRolesWorkUnits());
+            roleConsortia = new ArrayList<>(person.getRolesConsortia());
         }
     }
 
@@ -214,11 +204,41 @@ public class AapSystemSubject implements SystemSubject
     }
 
     @Override
-    public List<Role> getRelatedRoles()
+    public List<String> getRelatedRolesNames()
     {
-        List<Role> relatedRoles = new ArrayList<>();
-        roleWorkUnits.forEach(x -> relatedRoles.add(x.getRole()));
-        roleConsortia.forEach(x -> relatedRoles.add(x.getRole()));
-        return relatedRoles;
+        List<String> relatedRolesNames = new ArrayList<>();
+        roleWorkUnits.forEach(x -> relatedRolesNames.add(x.getRole().getName()));
+        roleConsortia.forEach(x -> relatedRolesNames.add(x.getRole().getName()));
+        return relatedRolesNames;
+    }
+
+    @Override
+    public FluentPersonRoleWorkUnitList getFluentRoleWorkUnits()
+    {
+        return new FluentPersonRoleWorkUnitList(roleWorkUnits);
+    }
+
+    @Override
+    public FluentPersonRoleConsortiumList getFluentRoleConsortia()
+    {
+        return new FluentPersonRoleConsortiumList(roleConsortia);
+    }
+
+    @Override
+    public boolean managesAnyWorkUnit(Collection<WorkUnit> workUnits)
+    {
+        return new FluentPersonRoleWorkUnitList(roleWorkUnits)
+            .whereUserHasRole("manager")
+            .getWorkUnits().stream()
+            .anyMatch(workUnits::contains);
+    }
+
+    @Override
+    public boolean managesAnyConsortia(Collection<Consortium> consortia)
+    {
+        return getFluentRoleConsortia()
+            .whereUserHasRole("manager")
+            .getConsortia().stream()
+            .anyMatch(consortia::contains);
     }
 }

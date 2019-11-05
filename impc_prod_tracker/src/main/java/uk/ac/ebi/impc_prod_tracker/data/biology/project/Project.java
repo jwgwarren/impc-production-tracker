@@ -1,8 +1,23 @@
+/*******************************************************************************
+ * Copyright 2019 EMBL - European Bioinformatics Institute
+ *
+ * Licensed under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific
+ * language governing permissions and limitations under the
+ * License.
+ *******************************************************************************/
 package uk.ac.ebi.impc_prod_tracker.data.biology.project;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
-import uk.ac.ebi.impc_prod_tracker.conf.error_management.OperationFailedException;
+import uk.ac.ebi.impc_prod_tracker.conf.exceptions.SystemOperationFailedException;
 import uk.ac.ebi.impc_prod_tracker.conf.security.Resource;
 import uk.ac.ebi.impc_prod_tracker.conf.security.ResourcePrivacy;
 import uk.ac.ebi.impc_prod_tracker.data.BaseEntity;
@@ -10,15 +25,12 @@ import uk.ac.ebi.impc_prod_tracker.data.biology.assignment_status.AssignmentStat
 import uk.ac.ebi.impc_prod_tracker.data.biology.assignment_status_stamp.AssignmentStatusStamp;
 import uk.ac.ebi.impc_prod_tracker.data.biology.plan.Plan;
 import uk.ac.ebi.impc_prod_tracker.data.biology.privacy.Privacy;
-import uk.ac.ebi.impc_prod_tracker.data.biology.project_gene.ProjectGene;
-import uk.ac.ebi.impc_prod_tracker.data.biology.project_location.ProjectLocation;
-import uk.ac.ebi.impc_prod_tracker.data.biology.project_sequence.ProjectSequence;
+import uk.ac.ebi.impc_prod_tracker.data.biology.project_consortium.ProjectConsortium;
+import uk.ac.ebi.impc_prod_tracker.data.biology.project_intention.ProjectIntention;
 import uk.ac.ebi.impc_prod_tracker.data.biology.species.Species;
 import uk.ac.ebi.impc_prod_tracker.data.organization.consortium.Consortium;
 import uk.ac.ebi.impc_prod_tracker.data.organization.work_unit.WorkUnit;
-
 import javax.persistence.*;
-import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -35,21 +47,12 @@ public class Project extends BaseEntity implements Resource<Project>
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "projectSeq")
     private Long id;
 
-    @Column(unique = true)
-    @NotNull
     private String tpn;
-
-//    @PostPersist
-//    public void postPersist()
-//    {
-//        tpn = "TPN:" + String.format("%0" + 9 + "d", id);
-//    }
 
     @Column(unique = true)
     private Long imitsMiPlanId;
 
     @EqualsAndHashCode.Exclude
-    @JsonIgnore
     @ToString.Exclude
     @ManyToOne
     private AssignmentStatus assignmentStatus;
@@ -97,7 +100,8 @@ public class Project extends BaseEntity implements Resource<Project>
                 resourcePrivacy = ResourcePrivacy.RESTRICTED;
                 break;
             default:
-                throw new OperationFailedException("Invalid privacy");
+                String detailedError = "Privacy: " + privacy.getName() + " in project " + toString();
+                throw new SystemOperationFailedException("Invalid privacy", detailedError);
         }
         return resourcePrivacy;
     }
@@ -114,7 +118,7 @@ public class Project extends BaseEntity implements Resource<Project>
         restrictedProject.setIsActive(isActive);
         restrictedProject.setRecovery(recovery);
         restrictedProject.setProjectExternalRef(projectExternalRef);
-        restrictedProject.setGenes(genes);
+        restrictedProject.setProjectIntentions(projectIntentions);
         restrictedProject.setIsObjectRestricted(true);
         return restrictedProject;
     }
@@ -123,37 +127,28 @@ public class Project extends BaseEntity implements Resource<Project>
     public List<WorkUnit> getRelatedWorkUnits()
     {
         List<WorkUnit> relatedWorkUnites = new ArrayList<>();
-        plans.forEach(x -> relatedWorkUnites.add(x.getWorkUnit()));
+        if (plans != null)
+        {
+            plans.forEach(x -> relatedWorkUnites.add(x.getWorkUnit()));
+        }
         return relatedWorkUnites;
     }
 
+    @Override
+    public List<Consortium> getRelatedConsortia()
+    {
+        List<Consortium> relatedConsortia = new ArrayList<>();
+        if (projectConsortia != null)
+        {
+            projectConsortia.forEach(x -> relatedConsortia.add(x.getConsortium()));
+        }
+        return relatedConsortia;
+    }
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @OneToMany(mappedBy = "project")
-    private Set<ProjectGene> genes;
-
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @OneToMany(mappedBy = "project")
-    private Set<ProjectSequence> sequences;
-
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @OneToMany
-    @JoinColumn(name = "project_id")
-    private Set<ProjectLocation> locations;
-
-
-
-    @ToString.Exclude
-    @JsonIgnore
-    @ManyToMany
-    @JoinTable(
-            name = "project_consortium",
-            joinColumns = @JoinColumn(name = "project_id"),
-            inverseJoinColumns = @JoinColumn(name = "consortium_id"))
-    private Set<Consortium> consortia;
+    @OneToMany(cascade=CascadeType.ALL, mappedBy = "project")
+    private List<ProjectIntention> projectIntentions;
 
     @ToString.Exclude
     @JsonIgnore
@@ -163,6 +158,9 @@ public class Project extends BaseEntity implements Resource<Project>
             joinColumns = @JoinColumn(name = "project_id"),
             inverseJoinColumns = @JoinColumn(name = "species_id"))
     private Set<Species> species;
+
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @OneToMany(cascade=CascadeType.ALL, mappedBy = "project", orphanRemoval=true)
+    private Set<ProjectConsortium> projectConsortia;
 }
-
-

@@ -1,10 +1,12 @@
 package uk.ac.ebi.impc_prod_tracker.data.biology.allele_categorization;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import uk.ac.ebi.impc_prod_tracker.data.BaseEntity;
-
+import uk.ac.ebi.impc_prod_tracker.data.biology.project_intention.ProjectIntention;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
+import java.util.Set;
 
 @NoArgsConstructor(access= AccessLevel.PRIVATE, force=true)
 @Data
@@ -22,4 +24,9 @@ public class AlleleCategorization extends BaseEntity
 
     private String description;
 
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @JsonIgnore
+    @ManyToMany(mappedBy = "alleleCategorizations")
+    private Set<ProjectIntention> projectIntentions;
 }

@@ -24,17 +24,21 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import uk.ac.ebi.impc_prod_tracker.common.pagination.PaginationHelper;
 import uk.ac.ebi.impc_prod_tracker.common.types.PlanTypes;
-import uk.ac.ebi.impc_prod_tracker.conf.error_management.OperationFailedException;
+import uk.ac.ebi.impc_prod_tracker.conf.exceptions.UserOperationFailedException;
 import uk.ac.ebi.impc_prod_tracker.data.biology.project.Project;
-import uk.ac.ebi.impc_prod_tracker.service.project.ProjectService;
+import uk.ac.ebi.impc_prod_tracker.service.biology.project.ProjectService;
 import uk.ac.ebi.impc_prod_tracker.web.controller.common.PlanLinkBuilder;
+import uk.ac.ebi.impc_prod_tracker.web.controller.project.helper.ProjectFilter;
+import uk.ac.ebi.impc_prod_tracker.web.controller.project.helper.ProjectFilterBuilder;
+import uk.ac.ebi.impc_prod_tracker.web.controller.project.helper.ProjectUtilities;
 import uk.ac.ebi.impc_prod_tracker.web.controller.util.LinkUtil;
 import uk.ac.ebi.impc_prod_tracker.web.dto.common.history.HistoryDTO;
-import uk.ac.ebi.impc_prod_tracker.web.dto.project.NewProjectRequestDTO;
 import uk.ac.ebi.impc_prod_tracker.web.dto.project.ProjectDTO;
 import uk.ac.ebi.impc_prod_tracker.web.mapping.common.history.HistoryMapper;
-import uk.ac.ebi.impc_prod_tracker.web.mapping.project.ProjectMapper;
+import uk.ac.ebi.impc_prod_tracker.web.mapping.project.ProjectDtoToEntityMapper;
+import uk.ac.ebi.impc_prod_tracker.web.mapping.project.ProjectEntityToDtoMapper;
 import java.util.List;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
@@ -46,20 +50,23 @@ import static org.springframework.http.ResponseEntity.ok;
 class ProjectController
 {
     private ProjectService projectService;
-    private ProjectMapper projectMapper;
+    private ProjectEntityToDtoMapper projectEntityToDtoMapper;
     private HistoryMapper historyMapper;
+    private ProjectDtoToEntityMapper projectDtoToEntityMapper;
 
     private static final String PROJECT_NOT_FOUND_ERROR =
         "Project %s does not exist or you don't have access to it.";
 
     ProjectController(
         ProjectService projectService,
-        ProjectMapper projectMapper,
-        HistoryMapper historyMapper)
+        ProjectEntityToDtoMapper projectEntityToDtoMapper,
+        HistoryMapper historyMapper,
+        ProjectDtoToEntityMapper projectDtoToEntityMapper)
     {
         this.projectService = projectService;
-        this.projectMapper = projectMapper;
+        this.projectEntityToDtoMapper = projectEntityToDtoMapper;
         this.historyMapper = historyMapper;
+        this.projectDtoToEntityMapper = projectDtoToEntityMapper;
     }
 
     /**
@@ -70,14 +77,25 @@ class ProjectController
     public ResponseEntity findAll(
         Pageable pageable,
         PagedResourcesAssembler assembler,
+        @RequestParam(value = "tpn", required = false) List<String> tpns,
+        @RequestParam(value = "markerSymbol", required = false) List<String> markerSymbols,
+        @RequestParam(value = "intention", required = false) List<String> intentions,
         @RequestParam(value = "workUnitName", required = false) List<String> workUnitNames,
         @RequestParam(value = "consortium", required = false) List<String> consortia,
         @RequestParam(value = "status", required = false) List<String> statuses,
-        @RequestParam(value = "privacy", required = false) List<String> privacies)
+        @RequestParam(value = "privacyName", required = false) List<String> privaciesNames)
     {
-        Page<Project> projects =
-            projectService.getProjects(pageable, workUnitNames, consortia, statuses, privacies);
-        Page<ProjectDTO> projectDtos = projects.map(this::getDTO);
+        ProjectFilter projectFilter = ProjectFilterBuilder.getInstance()
+            .withTpns(tpns)
+            .withMarkerSymbols(markerSymbols)
+            .withIntentions(intentions)
+            .withPrivacies(privaciesNames)
+            .withWorkUnitNames(workUnitNames)
+            .build();
+        List<Project> projects = projectService.getProjects(projectFilter);
+        Page<Project> paginatedContent =
+            PaginationHelper.createPage(projects, pageable);
+        Page<ProjectDTO> projectDtos = paginatedContent.map(this::getDTO);
         PagedModel pr =
             assembler.toModel(
                 projectDtos,
@@ -94,11 +112,11 @@ class ProjectController
         ProjectDTO projectDTO = null;
         if (project != null)
         {
-            projectDTO = projectMapper.toDto(project);
+            projectDTO = projectEntityToDtoMapper.toDto(project);
             projectDTO.add(
-                PlanLinkBuilder.buildPlanLinks(project, PlanTypes.PRODUCTION, "production_plans"));
+                PlanLinkBuilder.buildPlanLinks(project, PlanTypes.PRODUCTION, "productionPlans"));
             projectDTO.add(
-                PlanLinkBuilder.buildPlanLinks(project, PlanTypes.PHENOTYPING, "phenotyping_plans"));
+                PlanLinkBuilder.buildPlanLinks(project, PlanTypes.PHENOTYPING, "phenotypingPlans"));
         }
         return projectDTO;
     }
@@ -121,7 +139,7 @@ class ProjectController
         }
         else
         {
-            throw new OperationFailedException(
+            throw new UserOperationFailedException(
                 String.format(PROJECT_NOT_FOUND_ERROR, tpn), HttpStatus.NOT_FOUND);
         }
 
@@ -131,10 +149,12 @@ class ProjectController
      *      * @api {post} / create a new project.
      */
     @PostMapping
-    private ResponseEntity createProject(@RequestBody NewProjectRequestDTO newProjectRequestDTO)
+    private ResponseEntity createProject(@RequestBody ProjectDTO projectDTO)
     {
-        Project newProject = projectService.createProject(newProjectRequestDTO);
-        System.out.println("Project created => "+ newProject);
+
+        Project projectToBeCreated = projectDtoToEntityMapper.toEntity(projectDTO);
+        Project createdProject = projectService.createProject(projectToBeCreated);
+        System.out.println("Project created => "+ createdProject);
         return ok("Project created!");
     }
 
