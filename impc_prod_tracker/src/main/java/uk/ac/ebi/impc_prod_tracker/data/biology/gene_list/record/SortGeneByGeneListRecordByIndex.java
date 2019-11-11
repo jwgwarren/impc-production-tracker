@@ -13,13 +13,14 @@
  language governing permissions and limitations under the
  License.
  */
-package uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list;
+package uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.record;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.repository.CrudRepository;
+import java.util.Comparator;
 
-public interface ConsortiumListRepository extends CrudRepository<ConsortiumList, Long>
+public class SortGeneByGeneListRecordByIndex implements Comparator<GeneByGeneListRecord>
 {
-    Page<ConsortiumList> findAll(Pageable pageable);
+    public int compare(GeneByGeneListRecord a, GeneByGeneListRecord b)
+    {
+        return a.getIndex() - b.getIndex() ;
+    }
 }

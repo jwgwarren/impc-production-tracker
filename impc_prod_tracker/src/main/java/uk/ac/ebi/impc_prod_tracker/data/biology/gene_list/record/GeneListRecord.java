@@ -13,14 +13,14 @@
  language governing permissions and limitations under the
  License.
  */
-package uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list;
+package uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.record;
 
 import lombok.AccessLevel;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import uk.ac.ebi.impc_prod_tracker.data.BaseEntity;
-import uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list.target_group.TargetGroup;
-import uk.ac.ebi.impc_prod_tracker.data.organization.consortium.Consortium;
+import lombok.ToString;
+import uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.GeneList;
 import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -34,18 +34,20 @@ import java.util.Set;
 @NoArgsConstructor(access= AccessLevel.PUBLIC, force=true)
 @Data
 @Entity
-public class ConsortiumList extends BaseEntity
+public class GeneListRecord
 {
     @Id
-    @SequenceGenerator(name = "consortiumListSeq", sequenceName = "CONSORTIUM_LIST_SEQ")
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "consortiumListSeq")
+    @SequenceGenerator(name = "geneListRecordSeq", sequenceName = "GENE_LIST_RECORD_SEQ")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "geneListRecordSeq")
     private Long id;
 
     @ManyToOne
-    private Consortium consortium;
+    private GeneList geneList;
 
     private String note;
 
-    @OneToMany(cascade= CascadeType.ALL, mappedBy = "consortiumList", orphanRemoval=true)
-    private Set<TargetGroup> targetGroups;
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @OneToMany(cascade= CascadeType.ALL, mappedBy = "geneListRecord", orphanRemoval=true)
+    private Set<GeneByGeneListRecord> genesByRecord;
 }

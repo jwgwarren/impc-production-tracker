@@ -13,21 +13,13 @@
  language governing permissions and limitations under the
  License.
  */
-package uk.ac.ebi.impc_prod_tracker.web.dto.target_gene_list;
+package uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.record;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 
-@Data
-public class ConsortiumListDTO
+public interface GeneListRecordRepository extends CrudRepository<GeneListRecord, Long>
 {
-    private Long id;
-    private String note;
-
-    @JsonProperty("targets")
-    private List<TargetDTO> targetDTOS;
-
-    @JsonProperty("projects")
-    private List<ProjectByGeneSummaryDTO> projectByGeneSummaryDTOS;
+    Page<GeneListRecord> findAllByGeneListConsortiumName(Pageable pageable, String consortiumName);
 }

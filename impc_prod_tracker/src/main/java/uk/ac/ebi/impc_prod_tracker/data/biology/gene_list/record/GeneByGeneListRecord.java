@@ -13,15 +13,13 @@
  language governing permissions and limitations under the
  License.
  */
-package uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list.target_group;
+package uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.record;
 
 import lombok.AccessLevel;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
-import uk.ac.ebi.impc_prod_tracker.data.BaseEntity;
-import uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list.ConsortiumList;
+import uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.record.GeneListRecord;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -32,17 +30,19 @@ import javax.persistence.SequenceGenerator;
 @NoArgsConstructor(access= AccessLevel.PUBLIC, force=true)
 @Data
 @Entity
-public class TargetGroup extends BaseEntity
+public class GeneByGeneListRecord
 {
     @Id
-    @SequenceGenerator(name = "targetGroupSeq", sequenceName = "TARGET_GROUP_SEQ")
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "targetGroupSeq")
+    @SequenceGenerator(name = "geneByGeneListRecordSeq", sequenceName = "GENE_BY_GENE_LIST_RECORD_SEQ")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "geneByGeneListRecordSeq")
     private Long id;
 
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
     @ManyToOne
-    private ConsortiumList consortiumList;
+    GeneListRecord geneListRecord;
 
     private String accId;
+
+    transient private String inputSymbolValue;
+
+    private Integer index;
 }

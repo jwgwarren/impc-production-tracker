@@ -13,10 +13,16 @@
  language governing permissions and limitations under the
  License.
  */
-package uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list.target_group;
+package uk.ac.ebi.impc_prod_tracker.web.dto.gene_list;
 
-import org.springframework.data.repository.CrudRepository;
+import lombok.Data;
 
-public interface TargetGroupRepository extends CrudRepository<TargetGroup, Long>
+@Data
+public class GeneByGeneListRecordDTO
 {
+    private Long id;
+    private String accId;
+    private String symbol;
+    private String name;
+    private Integer index;
 }

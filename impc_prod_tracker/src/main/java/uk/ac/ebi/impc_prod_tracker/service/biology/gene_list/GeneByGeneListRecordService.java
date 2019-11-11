@@ -13,27 +13,25 @@
  language governing permissions and limitations under the
  License.
  */
-package uk.ac.ebi.impc_prod_tracker.service.biology.target_gene_list;
+package uk.ac.ebi.impc_prod_tracker.service.biology.gene_list;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
-import uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list.ConsortiumList;
-import uk.ac.ebi.impc_prod_tracker.data.biology.target_gene_list.ConsortiumListRepository;
-
+import uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.record.GeneByGeneListRecord;
+import uk.ac.ebi.impc_prod_tracker.data.biology.gene_list.record.GeneByGeneListRecordRepository;
 
 @Component
-public class TargetGeneListService
+public class GeneByGeneListRecordService
 {
-    private ConsortiumListRepository consortiumListRepository;
+    private GeneByGeneListRecordRepository geneByGeneListRecordRepository;
 
-    public TargetGeneListService(ConsortiumListRepository consortiumListRepository)
+    public GeneByGeneListRecordService(
+        GeneByGeneListRecordRepository geneByGeneListRecordRepository)
     {
-        this.consortiumListRepository = consortiumListRepository;
+        this.geneByGeneListRecordRepository = geneByGeneListRecordRepository;
     }
 
-    public Page<ConsortiumList> getAll(Pageable pageable)
+    public GeneByGeneListRecord findById(Long id)
     {
-        return consortiumListRepository.findAll(pageable);
+        return geneByGeneListRecordRepository.findById(id).orElse(null);
     }
 }
