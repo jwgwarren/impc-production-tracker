@@ -22,11 +22,11 @@ import java.util.List;
 
 @Relation(collectionRelation = "records")
 @Data
-public class GeneListRecordDTO
+public class ListRecordDTO
 {
     private Long id;
     private String note;
-    private List<GeneByGeneListRecordDTO> genes;
+    private List<GeneByListRecordDTO> genes;
 
     @JsonProperty("projects")
     private List<ProjectByGeneSummaryDTO> projectByGeneSummaryDTOS;

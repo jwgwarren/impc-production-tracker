@@ -13,13 +13,16 @@
  language governing permissions and limitations under the
  License.
  */
-package org.gentar.biology.gene_list.record;
+package org.gentar.biology.gene_list;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.repository.CrudRepository;
+import lombok.Data;
 
-public interface GeneListRecordRepository extends CrudRepository<GeneListRecord, Long>
+@Data
+public class GeneByListRecordDTO
 {
-    Page<GeneListRecord> findAllByGeneListConsortiumName(Pageable pageable, String consortiumName);
+    private Long id;
+    private String accId;
+    private String symbol;
+    private String name;
+    private Integer index;
 }

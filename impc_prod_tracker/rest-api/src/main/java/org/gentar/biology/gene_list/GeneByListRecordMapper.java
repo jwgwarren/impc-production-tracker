@@ -15,23 +15,21 @@
  */
 package org.gentar.biology.gene_list;
 
+import org.gentar.biology.gene_list.record.GeneByListRecord;
 import org.gentar.exceptions.UserOperationFailedException;
 import org.gentar.biology.gene.external_ref.GeneExternalService;
-import org.gentar.biology.gene_list.GeneByGeneListRecordService;
-import org.gentar.biology.gene_list.GeneByGeneListRecordDTO;
 import org.gentar.Mapper;
 import org.springframework.stereotype.Component;
 import org.gentar.biology.gene.Gene;
-import org.gentar.biology.gene_list.record.GeneByGeneListRecord;
 
 @Component
-public class GeneByGeneListRecordMapper
-    implements Mapper<GeneByGeneListRecord, GeneByGeneListRecordDTO>
+public class GeneByListRecordMapper
+    implements Mapper<GeneByListRecord, GeneByListRecordDTO>
 {
     private GeneExternalService geneExternalService;
     private GeneByGeneListRecordService geneByGeneListRecordService;
 
-    public GeneByGeneListRecordMapper(
+    public GeneByListRecordMapper(
         GeneExternalService geneExternalService,
         GeneByGeneListRecordService geneByGeneListRecordService)
     {
@@ -40,22 +38,22 @@ public class GeneByGeneListRecordMapper
     }
 
     @Override
-    public GeneByGeneListRecordDTO toDto(GeneByGeneListRecord entity)
+    public GeneByListRecordDTO toDto(GeneByListRecord entity)
     {
-        GeneByGeneListRecordDTO geneByGeneListRecordDTO = new GeneByGeneListRecordDTO();
-        geneByGeneListRecordDTO.setAccId(entity.getAccId());
-        geneByGeneListRecordDTO.setId(entity.getId());
-        geneByGeneListRecordDTO.setIndex(entity.getIndex());
+        GeneByListRecordDTO geneByListRecordDTO = new GeneByListRecordDTO();
+        geneByListRecordDTO.setAccId(entity.getAccId());
+        geneByListRecordDTO.setId(entity.getId());
+        geneByListRecordDTO.setIndex(entity.getIndex());
         if (entity.getAccId() != null)
         {
             Gene gene =
                 geneExternalService.getGeneFromExternalDataBySymbolOrAccId(entity.getAccId());
             validateGeneExist(gene, entity.getAccId());
-            geneByGeneListRecordDTO.setName(gene.getName());
-            geneByGeneListRecordDTO.setSymbol(gene.getSymbol());
+            geneByListRecordDTO.setName(gene.getName());
+            geneByListRecordDTO.setSymbol(gene.getSymbol());
         }
 
-        return geneByGeneListRecordDTO;
+        return geneByListRecordDTO;
     }
 
     private void validateGeneExist(Gene gene, String accIdOrSymbol)
@@ -68,25 +66,25 @@ public class GeneByGeneListRecordMapper
     }
 
     @Override
-    public GeneByGeneListRecord toEntity(GeneByGeneListRecordDTO geneByGeneListRecordDTO)
+    public GeneByListRecord toEntity(GeneByListRecordDTO geneByListRecordDTO)
     {
-        GeneByGeneListRecord geneByGeneListRecord;
-        Long id = geneByGeneListRecordDTO.getId();
+        GeneByListRecord geneByListRecord;
+        Long id = geneByListRecordDTO.getId();
         if (id == null)
         {
-            geneByGeneListRecord = new GeneByGeneListRecord();
+            geneByListRecord = new GeneByListRecord();
         }
         else
         {
-            geneByGeneListRecord = geneByGeneListRecordService.findById(id);
+            geneByListRecord = geneByGeneListRecordService.findById(id);
         }
-        geneByGeneListRecord.setAccId(geneByGeneListRecordDTO.getAccId());
-        String newSymbol = geneByGeneListRecordDTO.getSymbol();
+        geneByListRecord.setAccId(geneByListRecordDTO.getAccId());
+        String newSymbol = geneByListRecordDTO.getSymbol();
         Gene gene =
             geneExternalService.getGeneFromExternalDataBySymbolOrAccId(newSymbol);
         validateGeneExist(gene, newSymbol);
-        geneByGeneListRecord.setInputSymbolValue(geneByGeneListRecordDTO.getSymbol());
-        geneByGeneListRecord.setAccId(gene.getAccId());
-        return geneByGeneListRecord;
+        geneByListRecord.setInputSymbolValue(geneByListRecordDTO.getSymbol());
+        geneByListRecord.setAccId(gene.getAccId());
+        return geneByListRecord;
     }
 }

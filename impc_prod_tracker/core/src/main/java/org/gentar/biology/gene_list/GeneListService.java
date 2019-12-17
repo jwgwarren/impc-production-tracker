@@ -15,12 +15,13 @@
  */
 package org.gentar.biology.gene_list;
 
+import org.gentar.biology.gene_list.filter.GeneListFilter;
+import org.gentar.biology.gene_list.record.ListRecord;
 import org.gentar.organization.consortium.ConsortiumService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
-import org.gentar.biology.gene_list.record.GeneListRecord;
-import org.gentar.biology.gene_list.record.GeneByGeneListRecord;
+import org.gentar.biology.gene_list.record.GeneByListRecord;
 import org.gentar.biology.gene_list.record.SortGeneByGeneListRecordByIndex;
 import org.gentar.organization.consortium.Consortium;
 import java.util.ArrayList;
@@ -53,41 +54,105 @@ public class GeneListService
         return geneListRepository.findByConsortium(consortium);
     }
 
-    public Page<GeneListRecord> getByConsortium(Pageable pageable, String consortiumName)
+    public Page<ListRecord> getAllWithFilters(
+        Pageable pageable, GeneListFilter filter)
     {
-        return geneListRecordService.getAllByConsortium(pageable, consortiumName);
+        return geneListRecordService.getAllBySpecs(pageable, filter);
     }
 
     public void updateRecordsInList(
-        List<GeneListRecord> geneListRecords, String consortiumName)
+        List<ListRecord> listRecords, String consortiumName)
     {
         Consortium consortium =
             consortiumService.getConsortiumByNameOrThrowException(consortiumName);
         final GeneList geneList = getOrCreateGeneList(consortium);
 
-        validateNewRecords(new ArrayList<>(geneListRecords), geneList);
+        validateNewRecords(new ArrayList<>(listRecords), geneList);
 
-        geneListRecords.forEach(x -> {
+        listRecords.forEach(x -> {
             if (x.getGeneList() == null)
             {
                 x.setGeneList(geneList);
             }
         });
 
-        if (geneList.getGeneListRecords() == null)
+        if (geneList.getListRecords() == null)
         {
-            geneList.setGeneListRecords(geneListRecords);
+            geneList.setListRecords(listRecords);
         }
         else
         {
-            geneList.getGeneListRecords().addAll(geneListRecords);
+            addOrReplaceListRecords(listRecords, geneList);
         }
         geneListRepository.save(geneList);
     }
 
-    private void validateNewRecords(List<GeneListRecord> listData, GeneList geneList)
+    public void deleteRecordsInList(
+        List<Long> listRecordsIds, String consortiumName)
     {
-        if (geneList.getGeneListRecords() == null)
+        Consortium consortium =
+            consortiumService.getConsortiumByNameOrThrowException(consortiumName);
+        final GeneList geneList = getOrCreateGeneList(consortium);
+
+        if (geneList.getListRecords() != null)
+        {
+            removeListRecords(listRecordsIds, geneList);
+        }
+        geneListRepository.save(geneList);
+    }
+
+
+
+    private void addOrReplaceListRecords(List<ListRecord> listRecords, GeneList geneList)
+    {
+        var currentListRecords = geneList.getListRecords();
+        listRecords.forEach(x -> {
+            var index = indexOfRecordIdInList(x.getId(), currentListRecords);
+            if (index == -1)
+            {
+                currentListRecords.add(x);
+            }
+            else
+            {
+                currentListRecords.set(index, x);
+            }
+        });
+    }
+
+    private void removeListRecords(List<Long> listRecordsIds, GeneList geneList)
+    {
+        var currentListRecords = geneList.getListRecords();
+        listRecordsIds.forEach(x -> {
+            var index = indexOfRecordIdInList(x, currentListRecords);
+            if (index != -1)
+            {
+                currentListRecords.remove(index);
+            }
+        });
+    }
+
+    private int indexOfRecordIdInList(Long id, List<ListRecord> listRecords)
+    {
+        int index = -1;
+        if (id != null)
+        {
+            int size = listRecords.size();
+            for (int i = 0; i < size; i++)
+            {
+                ListRecord listRecord = listRecords.get(i);
+                if (id.equals(listRecord.getId()))
+                {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        return index;
+    }
+
+    private void validateNewRecords(List<ListRecord> listData, GeneList geneList)
+    {
+        if (geneList.getListRecords() == null)
         {
             return;
         }
@@ -96,11 +161,11 @@ public class GeneListService
         int size = listData.size();
         for (int i = 0; i < size; i++)
         {
-            GeneListRecord geneListRecord = listData.get(i);
+            ListRecord listRecord = listData.get(i);
             List<String> symbols = new ArrayList<>();
-            geneListRecord.getGenesByRecord().forEach(x -> symbols.add(x.getInputSymbolValue()));
+            listRecord.getGenesByRecord().forEach(x -> symbols.add(x.getInputSymbolValue()));
             geneListRecordService.validateNewRecord(
-                geneListRecord, sortedAccIdsInCurrentList, symbols.toString());
+                listRecord, sortedAccIdsInCurrentList, symbols.toString());
         }
     }
 
@@ -129,13 +194,13 @@ public class GeneListService
             geneListCsvConverter.buildListFromCsvContent(recordsByColumns, sortedAccIdsInCurrentList);
         validateNewCsvRecords(new ArrayList<>(listData), geneList, recordsByColumns);
         listData.forEach(x -> x.setGeneList(geneList));
-        if (geneList.getGeneListRecords() == null)
+        if (geneList.getListRecords() == null)
         {
-            geneList.setGeneListRecords(listData);
+            geneList.setListRecords(listData);
         }
         else
         {
-            geneList.getGeneListRecords().addAll(listData);
+            geneList.getListRecords().addAll(listData);
         }
         return geneList;
     }
@@ -143,7 +208,7 @@ public class GeneListService
     private Map<String, Long> getAccIdHashesForGeneList(GeneList geneList)
     {
         Map<String, Long> sortedAccIdsInCurrentList = new HashMap<>();
-        var geneListRecords = geneList.getGeneListRecords();
+        var geneListRecords = geneList.getListRecords();
         if (geneListRecords != null)
         {
             geneListRecords.forEach(x ->
@@ -154,11 +219,11 @@ public class GeneListService
     }
 
     private void validateNewCsvRecords(
-        List<GeneListRecord> listData,
+        List<ListRecord> listData,
         GeneList geneList, Map<String,
         List<String>> recordsByColumns)
     {
-        if (geneList.getGeneListRecords() == null)
+        if (geneList.getListRecords() == null)
         {
             return;
         }
@@ -170,21 +235,21 @@ public class GeneListService
         int size = listData.size();
         for (int i = 0; i < size; i++)
         {
-            GeneListRecord geneListRecord = listData.get(i);
+            ListRecord listRecord = listData.get(i);
             String geneSymbols = geneColumnContent.get(i);
             geneListRecordService.validateNewRecord(
-                geneListRecord, sortedAccIdsInCurrentList, geneSymbols);
+                listRecord, sortedAccIdsInCurrentList, geneSymbols);
         }
     }
 
-    private String getAccIdHashByGeneListRecord(GeneListRecord geneListRecord)
+    private String getAccIdHashByGeneListRecord(ListRecord listRecord)
     {
-        var genes = new ArrayList<>(geneListRecord.getGenesByRecord());
+        var genes = new ArrayList<>(listRecord.getGenesByRecord());
         genes.sort(new SortGeneByGeneListRecordByIndex());
         return genesByRecordToString(genes);
     }
 
-    public String genesByRecordToString(List<GeneByGeneListRecord> genes)
+    public String genesByRecordToString(List<GeneByListRecord> genes)
     {
         StringBuilder result = new StringBuilder();
         if (genes != null)
